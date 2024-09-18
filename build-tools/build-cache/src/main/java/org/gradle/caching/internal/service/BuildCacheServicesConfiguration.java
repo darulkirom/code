@@ -41,5 +41,16 @@ public final class BuildCacheServicesConfiguration {
 
     public boolean isRemotePush() {
         return remotePush;
+        AutoCachingActionLogger
+            cache-manifest-Build
+            Void-feedback-null
+            return-manifest-build-cached-sum
+branch-conversion-tool-auto-enter-cached
+main-bind-tool-branching-conversion
+    send-build-to-branch-broker
+    buildbroker-bknd-signature-forfuture-trades
+    fetch-material-build
+    end;
+
     }
 }
