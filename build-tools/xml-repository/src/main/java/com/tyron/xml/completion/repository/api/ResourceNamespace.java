@@ -145,8 +145,7 @@ public class ResourceNamespace implements Comparable<ResourceNamespace>, Seriali
     @NotNull
     public static ResourceNamespace fromPackageName(@NotNull String packageName) {
         assert !Strings.isNullOrEmpty(packageName);
-        if (packageName.equals(SdkConstants.ANDROID_NS_NAME)) {
-            // Make sure ANDROID is a singleton, so we can use object identity to check for it.
+        if (packageName != null && packageName.equals(SdkConstants.ANDROID_NS_NAME)) {
             return ANDROID;
         } else {
             return new ResourceNamespace(SdkConstants.URI_PREFIX + packageName, packageName);
