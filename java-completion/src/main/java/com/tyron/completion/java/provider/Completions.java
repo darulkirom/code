@@ -9,6 +9,8 @@ import static com.tyron.completion.progress.ProgressManager.checkCanceled;
 
 import android.util.Log;
 
+import com.sun.tools.javac.api.BasicJavacTask;
+import com.sun.tools.javac.api.JavacTaskImpl;
 import com.tyron.builder.model.SourceFileObject;
 import com.tyron.common.util.StringSearch;
 import com.tyron.completion.java.action.FindCurrentPath;
@@ -16,6 +18,7 @@ import com.tyron.completion.java.compiler.CompileTask;
 import com.tyron.completion.java.compiler.CompilerContainer;
 import com.tyron.completion.java.compiler.JavaCompilerService;
 import com.tyron.completion.java.compiler.ParseTask;
+import com.tyron.completion.java.compiler.services.CancelAbort;
 import com.tyron.completion.java.patterns.JavacTreePattern;
 import com.tyron.completion.java.util.FileContentFixer;
 import com.tyron.completion.model.CompletionList;
@@ -101,9 +104,17 @@ public class Completions {
         if (compiler.getCachedContainer().isWriting()) {
             return null;
         }
+
         CompilerContainer container = compiler.compile(Collections.singletonList(source));
+
         try {
             return container.get(task -> {
+                if (task == null || task.task == null) {
+                    return null;
+                }
+                if (((JavacTaskImpl) task.task).getContext() == null) {
+                    return null;
+                }
                 TreePath path = new FindCurrentPath(task.task).scan(task.root(), cursor);
                 String modifiedPartial = partial;
                 if (path.getLeaf()
@@ -117,9 +128,16 @@ public class Completions {
                 return getCompletionList(task, path, modifiedPartial, endsWithParen);
             });
         } catch (Throwable e) {
-            if (e instanceof ProcessCanceledException) {
+            boolean cancelled = e instanceof CancelAbort || e.getCause() instanceof CancelAbort;
+
+            if (cancelled || e instanceof ProcessCanceledException) {
+                compiler.close();
+                if (compiler.getCompileBatch() != null) {
+                    compiler.getCompileBatch().borrow.close();
+                }
                 throw e;
             }
+
 
             compiler.destroy();
             throw e;
@@ -130,43 +148,43 @@ public class Completions {
                                              boolean endsWithParen) {
         ProcessingContext context = createProcessingContext(task.task, task.root());
         CompletionList.Builder builder = CompletionList.builder(partial);
-        switch (path.getLeaf().getKind()) {
-            case IDENTIFIER:
-                // suggest only classes on a parameterized tree
-                if (INSIDE_PARAMETERIZED.accepts(path.getLeaf(), context)) {
-                    new ClassNameCompletionProvider(compiler)
-                            .complete(builder, task, path, partial, endsWithParen);
-                    break;
-                } else if (SWITCH_CONSTANT.accepts(path.getLeaf(), context)) {
-                    new SwitchConstantCompletionProvider(compiler)
-                            .complete(builder, task, path, partial, endsWithParen);
-                }
-                new IdentifierCompletionProvider(compiler)
-                        .complete(builder, task, path, partial, endsWithParen);
-                break;
-            case MEMBER_SELECT:
-                new MemberSelectCompletionProvider(compiler)
-                        .complete(builder, task, path, partial, endsWithParen);
-                break;
-            case MEMBER_REFERENCE:
-                new MemberReferenceCompletionProvider(compiler)
-                        .complete(builder, task, path, partial, endsWithParen);
-                break;
-            case IMPORT:
-                new ImportCompletionProvider(compiler)
-                        .complete(builder, task, path, partial, endsWithParen);
-                break;
-            case STRING_LITERAL:
-                break;
-            case VARIABLE:
-                new VariableNameCompletionProvider(compiler)
-                        .complete(builder, task, path, partial, endsWithParen);
-                break;
-            default:
-                new KeywordCompletionProvider(compiler)
-                        .complete(builder, task, path, partial, endsWithParen);
-                break;
-        }
+//        switch (path.getLeaf().getKind()) {
+//            case IDENTIFIER:
+//                // suggest only classes on a parameterized tree
+//                if (INSIDE_PARAMETERIZED.accepts(path.getLeaf(), context)) {
+//                    new ClassNameCompletionProvider(compiler)
+//                            .complete(builder,  task, path, partial, endsWithParen);
+//                    break;
+//                } else if (SWITCH_CONSTANT.accepts(path.getLeaf(), context)) {
+//                    new SwitchConstantCompletionProvider(compiler)
+//                            .complete(builder, task, path, partial, endsWithParen);
+//                }
+//                new IdentifierCompletionProvider(compiler)
+//                        .complete(builder, task, path, partial, endsWithParen);
+//                break;
+//            case MEMBER_SELECT:
+//                new MemberSelectCompletionProvider(compiler)
+//                        .complete(builder, task, path, partial, endsWithParen);
+//                break;
+//            case MEMBER_REFERENCE:
+//                new MemberReferenceCompletionProvider(compiler)
+//                        .complete(builder, task, path, partial, endsWithParen);
+//                break;
+//            case IMPORT:
+//                new ImportCompletionProvider(compiler)
+//                        .complete(builder, task, path, partial, endsWithParen);
+//                break;
+//            case STRING_LITERAL:
+//                break;
+//            case VARIABLE:
+//                new VariableNameCompletionProvider(compiler)
+//                        .complete(builder, task, path, partial, endsWithParen);
+//                break;
+//            default:
+//                new KeywordCompletionProvider(compiler)
+//                        .complete(builder, task, path, partial, endsWithParen);
+//                break;
+//        }
         return builder;
     }
 

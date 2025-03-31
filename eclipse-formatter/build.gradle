@@ -3,11 +3,13 @@ plugins {
 }
 
 dependencies {
-    implementation project (path: ':build-tools:eclipse-standalone')
+    implementation projects.buildTools.eclipseStandalone
+
     testImplementation 'junit:junit:4.13.2'
+    testImplementation projects.common
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_1_8
-    targetCompatibility = JavaVersion.VERSION_1_8
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
 }
