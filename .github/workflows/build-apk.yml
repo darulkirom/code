@@ -1,41 +1,36 @@
-name: Android CI
-
+name: Build Release APK Files
 on:
-  pull_request:
-  workflow_dispatch:
-
+  push:
+    branches:
+      - develop
 jobs:
   build:
-    name: Build debug apk
+    name: Build & Release
     runs-on: ubuntu-latest
     steps:
-      - name: Cancel previous runs
-        uses: styfle/cancel-workflow-action@0.5.0
-        with:
-          access_token: ${{ github.token }}
+      # Checkout Repository
+      - uses: actions/checkout@v3
 
-      - uses: actions/checkout@v2
-    
-      - name: set up JDK 11
-        uses: actions/setup-java@v2
+      # Setup Java for Flutter
+      - uses: actions/setup-java@v3
         with:
-          java-version: '11'
-          distribution: 'adopt'
+          java-version: "17.x"
+          distribution: "temurin"
           cache: gradle
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
-
-      - name: Build debug apk
-        uses: eskatos/gradle-command-action@v1
+      # Install Flutter command
+      - uses: subosito/flutter-action@v2
         with:
-          arguments: assembleDebug
-          distributions-cache-enabled: true
-          dependencies-cache-enabled: true
-          configuration-cache-enabled: true
+          channel: "stable"
+      - run: flutter --version
+      - run: flutter clean
+      - run: flutter pub get
+      - run: flutter build apk --release
 
-      - name: Upload debug apk
-        uses: actions/upload-artifact@v2
+      # Add APk to assets
+      - name: Push to Releases
+        uses: ncipollo/release-action@v1
         with:
-          name: apk-debug
-          path: app/build/outputs/apk/debug
+          artifacts: "build/app/outputs/flutter-apk/app-release.apk"
+          tag: v1.0.${{ github.run_number }}
+          token: ${{ secrets.TOKEN_SECRET }}
